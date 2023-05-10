@@ -55,7 +55,7 @@ fn javascript() {
     Http::http_get_slow("http//www.google.com", 2000, |result| {
         let result = result.into_string().unwrap();
         print_content(result.trim(), "web call");
-    });   
+    });
 }
 
 fn main() {
@@ -179,7 +179,7 @@ pub struct Runtime {
 enum PollEvent {
     /// An event from the `threadpool` with a tuple containing the `thread id`,
     /// the `callback_id` and the data which the we expect to process in our
-    /// callback 
+    /// callback
     Threadpool((usize, usize, Js)),
     /// An event from the epoll-based eventloop holding the `event_id` for the
     /// event
@@ -200,10 +200,9 @@ impl Runtime {
             let handle = thread::Builder::new()
                 .name(format!("pool{}", i))
                 .spawn(move || {
-
                     while let Ok(task) = evt_reciever.recv() {
                         print(format!("recived a task of type: {}", task.kind));
-                        
+
                         if let ThreadPoolTaskKind::Close = task.kind {
                             break;
                         };
@@ -235,7 +234,7 @@ impl Runtime {
             .name("epoll".to_string())
             .spawn(move || {
                 let mut events = minimio::Events::with_capacity(1024);
-                
+
                 loop {
                     let epoll_timeout_handle = epoll_timeout_clone.lock().unwrap();
                     let timeout = *epoll_timeout_handle;
@@ -246,14 +245,16 @@ impl Runtime {
                             for i in 0..v {
                                 let event = events.get_mut(i).expect("No events in event list.");
                                 print(format!("epoll event {} is ready", event.id()));
-                                
+
                                 let event = PollEvent::Epoll(event.id());
                                 event_sender.send(event).expect("epoll event");
                             }
                         }
                         Ok(v) if v == 0 => {
                             print("epoll event timeout is ready");
-                            event_sender.send(PollEvent::Timeout).expect("epoll timeout");
+                            event_sender
+                                .send(PollEvent::Timeout)
+                                .expect("epoll timeout");
                         }
                         Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {
                             print("recieved event of type: Close");
@@ -297,7 +298,7 @@ impl Runtime {
         unsafe { RUNTIME = rt_ptr };
 
         // just for us priting out during execution
-        let mut ticks = 0; 
+        let mut ticks = 0;
 
         // First we run our "main" function
         f();
@@ -363,7 +364,10 @@ impl Runtime {
 
         // We clean up our resources, makes sure all destructors runs.
         for thread in self.thread_pool.into_iter() {
-            thread.sender.send(Task::close()).expect("threadpool cleanup");
+            thread
+                .sender
+                .send(Task::close())
+                .expect("threadpool cleanup");
             thread.handle.join().unwrap();
         }
 
@@ -482,7 +486,10 @@ impl Runtime {
 
         // we are not going to implement a real scheduler here, just a LIFO queue
         let available = self.get_available_thread();
-        self.thread_pool[available].sender.send(event).expect("register work");
+        self.thread_pool[available]
+            .sender
+            .send(event)
+            .expect("register work");
         self.pending_events += 1;
     }
 
@@ -492,10 +499,10 @@ impl Runtime {
 
         let cb_id = self.generate_cb_identity();
         self.add_callback(cb_id, cb);
-        
+
         let timeout = now + Duration::from_millis(ms);
         self.timers.insert(timeout, cb_id);
-        
+
         self.pending_events += 1;
         print(format!("Registered timer event id: {}", cb_id));
     }
@@ -555,14 +562,17 @@ struct Http;
 impl Http {
     pub fn http_get_slow(url: &str, delay_ms: u32, cb: impl Fn(Js) + 'static + Clone) {
         let rt: &mut Runtime = unsafe { &mut *RUNTIME };
-        
+
         // Don't worry, http://slowwly.robertomurray.co.uk is a site for simulating a delayed
         // response from a server. Perfect for our use case.
-        let adr = "slowwly.robertomurray.co.uk:80";
+        // flash.siwalik.in
+        let adr = "127.0.0.1:9527";
+        // let adr = "slowwly.robertomurray.co.uk:80";
+        // let adr = "flash.siwalik.in:80";
         let mut stream = minimio::TcpStream::connect(adr).unwrap();
         let request = format!(
             "GET /delay/{}/url/http://{} HTTP/1.1\r\n\
-             Host: slowwly.robertomurray.co.uk\r\n\
+             Host: localhost\r\n\
              Connection: close\r\n\
              \r\n",
             delay_ms, url
@@ -604,25 +614,25 @@ fn print_content(t: impl std::fmt::Display, descr: &str) {
         descr.to_uppercase()
     );
 
-    let content = format!("{}", t); 
+    let content = format!("{}", t);
     let lines = content.lines().take(2);
     let main_cont: String = lines.map(|l| format!("{}\n", l)).collect();
     let opt_location = content.find("Location");
 
     let opt_location = opt_location.map(|loc| {
         content[loc..]
-        .lines()
-        .nth(0)
-        .map(|l| format!("{}\n",l))
-        .unwrap_or(String::new())
-    });    
+            .lines()
+            .nth(0)
+            .map(|l| format!("{}\n", l))
+            .unwrap_or(String::new())
+    });
 
     println!(
         "{}{}... [Note: Abbreviated for display] ...",
         main_cont,
         opt_location.unwrap_or(String::new())
     );
-    
+
     println!("===== END CONTENT =====\n");
 }
 
