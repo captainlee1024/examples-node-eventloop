@@ -73,7 +73,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use minimio;
+//use minimio;
+use tinymio;
 
 static mut RUNTIME: *mut Runtime = std::ptr::null_mut();
 
@@ -154,7 +155,8 @@ pub struct Runtime {
     /// Number of pending epoll events, only used by us to print for this example
     epoll_pending_events: usize,
     /// Our event registrator which registers interest in events with the OS
-    epoll_registrator: minimio::Registrator,
+    //epoll_registrator: minimio::Registrator,
+    epoll_registrator: tinymio::Registrator,
     // The handle to our epoll thread
     epoll_thread: thread::JoinHandle<()>,
     /// None = infinite, Some(n) = timeout in n ms, Some(0) = immidiate
@@ -225,7 +227,8 @@ impl Runtime {
         }
 
         // ===== EPOLL THREAD =====
-        let mut poll = minimio::Poll::new().expect("Error creating epoll queue");
+        //let mut poll = minimio::Poll::new().expect("Error creating epoll queue");
+        let mut poll = tinymio::Poll::new().expect("Error creating epoll queue");
         let registrator = poll.registrator();
         let epoll_timeout = Arc::new(Mutex::new(None));
         let epoll_timeout_clone = epoll_timeout.clone();
@@ -233,7 +236,8 @@ impl Runtime {
         let epoll_thread = thread::Builder::new()
             .name("epoll".to_string())
             .spawn(move || {
-                let mut events = minimio::Events::with_capacity(1024);
+                //let mut events = minimio::Events::with_capacity(1024);
+                let mut events = tinymio::Events::with_capacity(1024);
 
                 loop {
                     let epoll_timeout_handle = epoll_timeout_clone.lock().unwrap();
@@ -569,7 +573,8 @@ impl Http {
         let adr = "127.0.0.1:9527";
         // let adr = "slowwly.robertomurray.co.uk:80";
         // let adr = "flash.siwalik.in:80";
-        let mut stream = minimio::TcpStream::connect(adr).unwrap();
+        //let mut stream = minimio::TcpStream::connect(adr).unwrap();
+        let mut stream = tinymio::TcpStream::connect(adr).unwrap();
         let request = format!(
             "GET /delay/{}/url/http://{} HTTP/1.1\r\n\
              Host: localhost\r\n\
@@ -585,7 +590,8 @@ impl Http {
         let token = rt.generate_cb_identity();
 
         rt.epoll_registrator
-            .register(&mut stream, token, minimio::Interests::READABLE)
+            //.register(&mut stream, token, minimio::Interests::READABLE)
+            .register(&mut stream, token, tinymio::Interests::READABLE)
             .unwrap();
 
         let wrapped = move |_n| {

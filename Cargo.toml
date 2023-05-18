@@ -7,4 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-minimio = {git = "https://github.com/cfsamson/examples-minimio", branch = "node-experiment"}
+#minimio = {git = "https://github.com/cfsamson/examples-minimio", branch = "node-experiment"}
+tinymio = {git = "https://github.com/captainlee1024/tinymio", branch = "master"}
